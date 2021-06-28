@@ -2,9 +2,7 @@ package com.jsonlite;
 
 import com.jsonlite.model.*;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 
 public class Parser {
     public JsonNode readTree(String json) {
@@ -31,26 +29,35 @@ public class Parser {
             }
             jsonNode = new NumberNode(number);
         } else if (isObject(cleanJson)) {
-            String innerJson = cleanJson.substring(1, cleanJson.length() - 1);
             // split by commas that are not in {} or []
-            String[] keyValues = innerJson.split(",(?![^{}\\[\\]]*\\})");
+            List<String> keyValues = getJsonEntries(cleanJson);//innerJson.split(",(?![^{}\\[\\]]*\\})");
             Map<String, JsonNode> children = new HashMap<>();
             for (String keyValueString : keyValues) {
-                final String[] keyValue = keyValueString.split(":", 2); // split only on the first :
-                String key = keyValue[0].strip();
-                String value = keyValue[1].strip();
-                children.put(key, readTree(value));
+                final String strippedKeyValueString = keyValueString.strip();
+                // "" means an empty object(i.e. {}) with no children to add
+                if (!"".equals(strippedKeyValueString)) {
+                    final String[] keyValue = strippedKeyValueString.split(":", 2); // split only on the first :
+                    String key = keyValue[0].strip();
+                    if (!(key.startsWith("\"") && key.endsWith("\""))) {
+                        throw new IllegalArgumentException("Invalid JSON property name " + key);
+                    } else {
+                        key = key.substring(1, key.length() - 1);
+                    }
+                    String value = keyValue[1].strip();
+                    children.put(key, readTree(value));
+                }
             }
             jsonNode = new ObjectNode(children);
         } else if (isArray(cleanJson)) {
-            String innerJson = cleanJson.substring(1, cleanJson.length() - 1);
             // split by commas that are not in {} or []
-            String[] arrayElements = innerJson.split(",(?![^{}]*\\})");
+            List<String> arrayElements = getJsonEntries(cleanJson);//innerJson.split(",(?![^{}]*\\})");
             Map<String, JsonNode> children = new HashMap<>();
-            for (int i = 0; i < arrayElements.length; i++) {
-                children.put(String.valueOf(i), readTree(arrayElements[i]));
+            for (int i = 0; i < arrayElements.size(); i++) {
+                children.put(String.valueOf(i), readTree(arrayElements.get(i)));
             }
             jsonNode = new ArrayNode(children);
+        } else {
+            throw new IllegalArgumentException("Invalid JSON!");
         }
         return jsonNode;
     }
@@ -84,36 +91,102 @@ public class Parser {
         return StringUtils.startsWith(json, "[") && StringUtils.endWith(json, "]");
     }
 
-    private String getNextKeyValue(String json, int startPosition) {
-        // ignore commas in {}, [], and ""
+    public static String getNextKeyValue(String json, int startPosition) {
+        // find the "next" comma ignoring any commas inside {}, [], and ""
         Stack<Character> s = new Stack<>();
         // we need to make a special allowance for the " character
         // if the top character is a ", then nothing should be added or removed  to/from stack until
         // another " is met
+        // { "name": "test" }
+        // { "name": {} }
+        // { "name": [] }
+        // { "name": "{}" }
         for (int i = startPosition; i < json.length(); i++) {
-            char top = s.peek();
+            boolean isEmpty = s.isEmpty();
+            boolean isTopCharQuotation = !isEmpty && s.peek() == '"';
+
             char c = json.charAt(i);
-            if ((c == '{' || c == '[' || c == '"') && top != '"') {
+            if ((c == '{' || c == '[' || c == '"') && !isTopCharQuotation) {
                 s.push(c);
             }
-
-            if ((c == '}' || c == ']' || c == '"')) {
-                if (top != '"') {
-                    if (top == '{' && c == '}') {
-                        s.pop();
-                    }
-                    if (top == '[' && c == ']') {
-                        s.pop();
-                    }
+            else if (c == '}' || c == ']' || c == '"') {
+                if (isEmpty) {
+                    // should not happen
+                    throw new IllegalArgumentException("Invalid JSON!");
+                }
+                char top = s.peek();
+                if (top == '{' && c == '}') {
+                    s.pop();
+                } else if (top == '[' && c == ']') {
+                    s.pop();
                 } else if (top == '"' && c == '"') {
                     s.pop();
+                } else {
+                    throw new IllegalArgumentException("Unbalanced JSON!");
                 }
             }
-            if (c == ',' && s.empty()) {
+            if (c == ',' && isEmpty) {
                 return json.substring(startPosition, i);
             }
         }
-        return null;
+        return json.substring(startPosition);
+    }
+
+    public static int getNextCommaIndex(String json, int startPosition) {
+        // find the "next" comma ignoring any commas inside {}, [], and ""
+        Stack<Character> openCharStack = new Stack<>();
+        // we need to make a special allowance for the " character
+        // if the top character is a ", then nothing should be added or removed  to/from stack until
+        // another " is met
+        for (int i = startPosition; i < json.length(); i++) {
+            boolean isStackEmpty = openCharStack.isEmpty();
+            boolean isLastOpeningCharQuote = !isStackEmpty && openCharStack.peek() == '"';
+
+            char currentChar = json.charAt(i);
+            if ((currentChar == '{' || currentChar == '[' || currentChar == '"') && !isLastOpeningCharQuote) {
+                openCharStack.push(currentChar);
+            }
+            else if (currentChar == '}' || currentChar == ']' || currentChar == '"') {
+                if (isStackEmpty) {
+                    // a 'closing' character when there is no 'opening' character
+                    throw new IllegalArgumentException(String.format("Encountered unbalanced character '%s' at index '%s'", currentChar, i));
+                }
+                char lastOpeningChar = openCharStack.peek();
+                if (!isLastOpeningCharQuote) {
+                    if (lastOpeningChar == '{' && currentChar == '}') {
+                        openCharStack.pop();
+                    } else if (lastOpeningChar == '[' && currentChar == ']') {
+                        openCharStack.pop();
+                    } else {
+                        throw new IllegalArgumentException(String.format("Encountered unmatched character '%s' at index '%s'. Expected '%s'", currentChar, i, lastOpeningChar));
+                    }
+                } else if (currentChar == '"') {
+                    openCharStack.pop();
+                }
+            }
+            if (currentChar == ',' && isStackEmpty) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private List<String> getJsonEntries(String json) {
+        List<String> jsonEntries = new ArrayList<>();
+        // strip out the leading/trailing characters({}/[])
+        String innerJson = json.substring(1, json.length() - 1);
+        int startIdx = 0;
+        while (true) {
+            int nextComma = getNextCommaIndex(innerJson, startIdx);
+            if (nextComma == -1) {
+               jsonEntries.add(innerJson.substring(startIdx));
+               break;
+            } else {
+               jsonEntries.add(innerJson.substring(startIdx, nextComma));
+            }
+            startIdx = nextComma + 1;
+        }
+        return jsonEntries;
     }
 
 }

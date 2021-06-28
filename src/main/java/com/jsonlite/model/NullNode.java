@@ -9,4 +9,14 @@ public class NullNode extends JsonNode {
     public Type type() {
         return Type.NULL;
     }
+
+    @Override
+    public String toJsonString(boolean prettyPrint) {
+        return "null";
+    }
+
+    @Override
+    protected String toJsonString(int indent) {
+        return toJsonString(false);
+    }
 }

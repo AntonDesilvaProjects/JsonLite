@@ -17,4 +17,14 @@ public class BooleanNode extends JsonNode {
     public Type type() {
         return Type.BOOLEAN;
     }
+
+    @Override
+    public String toJsonString(boolean prettyPrint) {
+        return Boolean.toString(getBooleanValue());
+    }
+
+    @Override
+    protected String toJsonString(int indent) {
+        return toJsonString(false);
+    }
 }

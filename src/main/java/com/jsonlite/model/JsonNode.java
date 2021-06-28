@@ -12,6 +12,11 @@ import java.util.Set;
  *  Complex Nodes:
  *   a) ObjectNode
  *   b) ArrayNode
+ *
+ *  Functionalities:
+ *  a) printing
+ *  b) pretty-printing
+ *  c) quering
  * */
 public abstract class JsonNode {
     enum Type {
@@ -52,4 +57,18 @@ public abstract class JsonNode {
     }
 
     public abstract Type type();
+
+    public abstract String toJsonString(boolean prettyPrint);
+
+    public  String find(String jsonPath) { return null; }
+
+    protected abstract String toJsonString(int indent);
+
+    protected String generateIndentString(int indent) {
+        StringBuilder indentString = new StringBuilder("\n");
+        if (indent > 0) {
+            indentString.append("   ".repeat(indent));
+        }
+        return indentString.toString();
+    }
 }

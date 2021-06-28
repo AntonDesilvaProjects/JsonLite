@@ -17,4 +17,14 @@ public class TextNode extends JsonNode {
     public Type type() {
         return Type.TEXT;
     }
+
+    @Override
+    public String toJsonString(boolean prettyPrint) {
+        return getText();
+    }
+
+    @Override
+    protected String toJsonString(int indent) {
+       return toJsonString(false);
+    }
 }

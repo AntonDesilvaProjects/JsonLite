@@ -16,4 +16,14 @@ public class NumberNode extends JsonNode {
     public Type type() {
         return Type.NUMBER;
     }
+
+    @Override
+    public String toJsonString(boolean prettyPrint) {
+        return getNumber().toString();
+    }
+
+    @Override
+    protected String toJsonString(int indent) {
+        return toJsonString(false);
+    }
 }
