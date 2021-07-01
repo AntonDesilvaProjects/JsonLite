@@ -23,11 +23,6 @@ public class ObjectNode extends JsonNode {
     }
 
     @Override
-    public String find(String jsonPath) {
-        return null;
-    }
-
-    @Override
     protected String toJsonString(int indent) {
         boolean isIndent = indent > 0;
         StringBuilder buffer = new StringBuilder("{");
@@ -50,5 +45,4 @@ public class ObjectNode extends JsonNode {
         buffer.append("}");
         return buffer.toString();
     }
-
 }
