@@ -1,7 +1,10 @@
 package com.jsonlite.model;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public class ArrayNode extends JsonNode {
     public ArrayNode(Map<String, JsonNode> children) {
@@ -39,5 +42,19 @@ public class ArrayNode extends JsonNode {
         }
         buffer.append("]");
         return buffer.toString();
+    }
+
+    public List<JsonNode> query(Predicate<JsonNode> filter) {
+        final List<JsonNode> matches = new ArrayList<>();
+        final Map<String, JsonNode> children = getChildren();
+        if (children != null && !children.isEmpty()) {
+            for (int i = 0; i < children.size(); i++) {
+                JsonNode currentNode = getChildren().get(String.valueOf(i));
+                if (filter.test(currentNode)) {
+                    matches.add(currentNode);
+                }
+            }
+        }
+        return matches;
     }
 }

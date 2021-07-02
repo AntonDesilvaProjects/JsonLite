@@ -1,5 +1,7 @@
 package com.jsonlite.model;
 
+import org.w3c.dom.Text;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -20,8 +22,24 @@ import java.util.Set;
  *  c) quering
  * */
 public abstract class JsonNode {
+
     enum Type {
-        TEXT, BOOLEAN, NUMBER, NULL, OBJECT, ARRAY
+        TEXT(TextNode.class),
+        BOOLEAN(BooleanNode.class),
+        NUMBER(NumberNode.class),
+        NULL(NullNode.class),
+        OBJECT(ObjectNode.class),
+        ARRAY(ArrayNode.class);
+
+        private Class<?> clazz;
+
+        Type(Class<?> clazz) {
+            this.clazz = clazz;
+        }
+
+        public Class<?> getClazz() {
+            return clazz;
+        }
     }
 
     private String key;
@@ -89,5 +107,33 @@ public abstract class JsonNode {
             }
         }
         return Optional.of(node);
+    }
+
+    public boolean hasChild(String nameOrIdx) {
+        return children != null && children.containsKey(nameOrIdx);
+    }
+
+    public Optional<TextNode> getAsTextNode() {
+        return Type.TEXT.equals(type()) ? Optional.of((TextNode) this) : Optional.empty();
+    }
+
+    public Optional<BooleanNode> getAsBooleanNode() {
+        return Type.BOOLEAN.equals(type()) ? Optional.of((BooleanNode) this) : Optional.empty();
+    }
+
+    public Optional<NumberNode> getAsNumberNode() {
+        return Type.NUMBER.equals(type()) ? Optional.of((NumberNode) this) : Optional.empty();
+    }
+
+    public Optional<NullNode> getAsNullNode() {
+        return Type.NULL.equals(type()) ? Optional.of((NullNode) this) : Optional.empty();
+    }
+
+    public Optional<ObjectNode> getAsObjectNode() {
+        return Type.OBJECT.equals(type()) ? Optional.of((ObjectNode) this) : Optional.empty();
+    }
+
+    public Optional<ArrayNode> getAsArrayNode() {
+        return Type.ARRAY.equals(type()) ? Optional.of((ArrayNode) this) : Optional.empty();
     }
 }
